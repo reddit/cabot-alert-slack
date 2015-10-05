@@ -23,11 +23,25 @@ class SlackAlert(AlertPlugin):
     author = "Neil Williams"
 
     def send_alert(self, service, users, duty_officers):
+        self._send_alert(service, acked=False)
+
+    def send_alert_update(self, service, users, duty_officers):
+        self._send_alert(service, acked=True)
+
+    def _send_alert(self, service, acked):
+        overall_status = service.overall_status
+        if not (acked and overall_status != "PASSING"):
+            message = MESSAGES_BY_STATUS[overall_status]
+        else:
+            user = service.unexpired_acknowledgement().user
+            name = user.first_name or user.username
+            message = "is being worked on by {}. :hammer:".format(name)
+
         context = Context({
             "scheme": settings.WWW_SCHEME,
             "host": settings.WWW_HTTP_HOST,
             "service": service,
-            "message": MESSAGES_BY_STATUS[service.overall_status],
+            "message": message,
         })
         text = Template(TEXT_TEMPLATE).render(context)
 
